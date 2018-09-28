@@ -1,4 +1,17 @@
+<?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="yotpoQueue" xsi:type="object">Yotpo\Yotpo\Console\Command\Queue</item>
+            </argument>
+        </arguments>
+    </type>
+
     <preference for="Magento\Catalog\Block\Product\ListProduct" type="Yotpo\Yotpo\Block\Rewrite\Product\YotpoListProduct" />
     <preference for="Magento\Review\Block\Product\ReviewRenderer" type="Yotpo\Yotpo\Block\Product\YotpoReviewRenderer" />
+    <preference for="Yotpo\Yotpo\Api\Data\QueueInterface" type="Yotpo\Yotpo\Model\Queue"/>
+    <preference for="Yotpo\Yotpo\Api\Data\QueueSearchResultInterface" type="Yotpo\Yotpo\Model\ResourceModel\Queue\Collection"/>
+    <preference for="Yotpo\Yotpo\Api\QueueRepositoryInterface" type="Yotpo\Yotpo\Model\QueueRepository"/>
+    <preference for="Yotpo\Yotpo\Model\Spi\QueueResourceInterface" type="Yotpo\Yotpo\Model\ResourceModel\Queue"/>
 </config>
