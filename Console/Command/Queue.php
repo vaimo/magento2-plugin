@@ -51,8 +51,7 @@ class Queue extends Command
         ApiClient $apiClient,
         OrderRepositoryInterface $orderRepository,
         $name = null
-    )
-    {
+    ) {
         parent::__construct($name);
 
         $this->state = $state;
@@ -85,18 +84,15 @@ class Queue extends Command
         $entityType = $input->getOption('entity_type');
         $limit = $input->getOption('limit');
 
+        /** @var \Yotpo\Yotpo\Model\Queue $queue */
         foreach ($this->queueRepository->getListQueued($entityType, $limit) as $queue) {
-            try {
-                $output->write(sprintf('%s/%d ', $queue->getEntityType(), $queue->getEntityId()));
+            $output->write(sprintf('%s/%d ', $queue->getEntityType(), $queue->getEntityId()));
+            $queue->process();
 
-                $order = $this->orderRepository->get($queue->getEntityId());
-                $data = $this->apiClient->prepareOrderData($order);
-                $queue->setStatus(QueueInterface::STATUS_EXPORTED);
-                $output->writeln("<info>[ OK ]</info>");
-            } catch (\Exception $e) {
-                $queue->setStatus(QueueInterface::STATUS_FAILED);
-                $queue->setMessage($e->getMessage());
-                $output->writeln("<error>[ ERROR ]</error>");
+            if ($queue->getStatus() == QueueInterface::STATUS_PROCESSED) {
+                $output->writeln('<info>[ OK ]</info>');
+            } else {
+                $output->writeln('<error>[ ERROR: ' . $queue->getMessage() . ' ]</error>');
             }
 
             $this->queueRepository->save($queue);

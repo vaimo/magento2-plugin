@@ -19,6 +19,6 @@ interface QueueInterface
     const MESSAGE = 'message';
 
     const STATUS_QUEUED = 0;
-    const STATUS_EXPORTED = 1;
+    const STATUS_PROCESSED = 1;
     const STATUS_FAILED = 2;
 }

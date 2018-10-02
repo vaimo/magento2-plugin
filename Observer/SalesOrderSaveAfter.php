@@ -37,7 +37,7 @@ class SalesOrderSaveAfter implements ObserverInterface
     {
         /** @var Order $order */
         if ($order = $observer->getEvent()->getOrder()) {
-            if (true || $order->getState() == Order::STATE_COMPLETE) {
+            if ($order->getState() == Order::STATE_COMPLETE) {
                 $queue = $this->queueFactory->create();
                 $queue->setStatus(QueueInterface::STATUS_QUEUED)
                     ->setEntityType('order')
