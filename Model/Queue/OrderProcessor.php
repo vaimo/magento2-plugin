@@ -6,7 +6,6 @@
 
 namespace Yotpo\Yotpo\Model\Queue;
 
-use Magento\Braintree\Model\LocaleResolver;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Catalog\Helper\Image as ImageHelper;
@@ -14,6 +13,7 @@ use Magento\Framework\Escaper;
 use Magento\Store\Model\App\Emulation;
 use Yotpo\Yotpo\Helper\ApiClient;
 use Magento\Framework\UrlInterface;
+use Magento\Framework\App\Area;
 
 class OrderProcessor
 {
@@ -132,7 +132,7 @@ class OrderProcessor
         $storeId = $order->getStoreId();
 
         try {
-            $this->emulation->startEnvironmentEmulation($storeId, 'frontend', true);
+            $this->emulation->startEnvironmentEmulation($storeId, Area::AREA_FRONTEND, true);
             $data = $this->getOrderData($order);
             $data['utoken'] = $this->apiClient->oauthAuthentication($storeId);
 

@@ -29,9 +29,6 @@ class Queue
         $this->queueRepository = $queueRepository;
     }
 
-    /**
-     * @throws \Magento\Framework\Exception\LocalizedException
-     */
     public function execute()
     {
         /** @var \Yotpo\Yotpo\Model\Queue $queue */
