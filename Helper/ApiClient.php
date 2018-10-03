@@ -2,172 +2,142 @@
 
 namespace Yotpo\Yotpo\Helper;
 
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\HTTP\Adapter\CurlFactory;
+use Yotpo\Yotpo\Block\Config;
+use Magento\Framework\Serialize\Serializer\Json;
+
 class ApiClient
 {
-
-    const YOTPO_OAUTH_TOKEN_URL = "https://api.yotpo.com/oauth/token";
-    const YOTPO_SECURED_API_URL = "https://api.yotpo.com";
-    const YOTPO_UNSECURED_API_URL = "http://api.yotpo.com";
+    const YOTPO_OAUTH_TOKEN_URL = 'https://api.yotpo.com/oauth/token';
+    const YOTPO_SECURED_API_URL = 'https://api.yotpo.com';
+    const YOTPO_UNSECURED_API_URL = 'http://api.yotpo.com';
     const DEFAULT_TIMEOUT = 30;
 
-    public function __construct(\Magento\Store\Model\StoreManagerInterface $storeManager,
-                                \Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable $bundleSelection,
-                                \Magento\Catalog\Model\Product $productRepository,
-                                \Magento\Framework\Escaper $escaper,
-                                \Magento\Framework\HTTP\Adapter\CurlFactory $curlFactory,
-                                \Yotpo\Yotpo\Block\Config $config,
-                                \Psr\Log\LoggerInterface $logger,
-                                \Magento\Catalog\Helper\Image $imgHelper)
-    {
-        $this->_storeManager = $storeManager;
-        $this->_bundleSelection = $bundleSelection;
-        $this->_productRepository = $productRepository;
-        $this->_escaper = $escaper;
-        $this->_curlFactory = $curlFactory;
-        $this->_logger = $logger;
-        $this->_config = $config;
-        $this->_imgHelper = $imgHelper;
+    /**
+     * @var CurlFactory
+     */
+    private $curlFactory;
+
+    /**
+     * @var Config
+     */
+    private $config;
+
+    /**
+     * @var Json
+     */
+    protected $json;
+
+    public function __construct(
+        CurlFactory $curlFactory,
+        Config $config,
+        Json $json
+    ) {
+        $this->curlFactory = $curlFactory;
+        $this->config = $config;
+        $this->json = $json;
     }
 
-    public function prepareProductsData($order)
-    {
-        $this->_storeManager->setCurrentStore($order->getStoreId());
-        $products = $order->getAllItems(); //filter out simple products
-        $products_arr = array();
-        foreach ($products as $item) {
-            if ($item->getData('product_type') != 'configurable') {
-                $full_product = $this->_productRepository->get($item->getSku());
-                $parentId = $item->getProduct()->getId();
-                if (!empty($parentId)) {
-                    $full_product = $this->_productRepository->load($parentId);
-                }
-                $specs_data = array();
-                $product_data = array();
-                $product_data['name'] = $full_product->getName();
-                $product_data['url'] = '';
-                $product_data['image'] = '';
-                try {
-                    $product_data['url'] = $full_product->getUrlInStore(array('_store' => $order->getStoreId()));
-                    $product_data['image'] = $this->_imgHelper->init($full_product, 'product_base_image')->getUrl();
-                    if ($full_product->getUpc()) {
-                        $specs_data['upc'] = $full_product->getUpc();
-                    }
-                    if ($full_product->getIsbn()) {
-                        $specs_data['isbn'] = $full_product->getIsbn();
-                    }
-                    if ($full_product->getBrand()) {
-                        $specs_data['brand'] = $full_product->getBrand();
-                    }
-                    if ($full_product->getMpn()) {
-                        $specs_data['mpn'] = $full_product->getMpn();
-                    }
-                    if ($full_product->getSku()) {
-                        $specs_data['external_sku'] = $full_product->getSku();
-                    }
-                    if (!empty($specs_data)) {
-                        $product_data['specs'] = $specs_data;
-                    }
-                } catch (\Exception $e) {
-                    $this->_logger->addDebug('ApiClient prepareProductsData Exception' . json_encode($e));
-                }
-                $rawdescription = str_replace(array('\'', '"'), '', $full_product->getDescription());
-                $description = $this->_escaper->escapeHtml(strip_tags($rawdescription));
-                $product_data['description'] = $description;
-                $product_data['price'] = $item->getPrice();
-                $products_arr[$full_product->getId()] = $product_data;
-            }
-        }
-        return $products_arr;
-    }
-
+    /**
+     * @param $storeId
+     * @return string
+     * @throws LocalizedException
+     */
     public function oauthAuthentication($storeId)
     {
-        $app_key = $this->_config->getAppKey($storeId);
-        $secret = $this->_config->getSecret($storeId);
-        if ($app_key == null || $secret == null) {
-            $this->_logger->addDebug('Missing app key or secret');
-            return null;
+        $appKey = $this->config->getAppKey($storeId);
+        $secret = $this->config->getSecret($storeId);
+
+        if ($appKey == null || $secret == null) {
+            throw new LocalizedException(__('Missing app key or secret'));
         }
-        $yotpo_options = array('client_id' => $app_key, 'client_secret' => $secret, 'grant_type' => 'client_credentials');
-        try {
-            $result = $this->createApiPost('oauth/token', $yotpo_options);
-            if (!is_array($result)) {
-                $this->_logger->addDebug('error: no response from api');
-                return null;
-            }
-            $valid_response = is_array($result['body']) && array_key_exists('access_token', $result['body']);
-            if (!$valid_response) {
-                $this->_logger->addDebug('error: no access token received');
-                return null;
-            }
-            return $result['body']['access_token'];
-        } catch (\Exception $e) {
-            $this->_logger->addDebug('error: ' . $e);
-            return null;
+
+        $data = [
+            'client_id' => $appKey,
+            'client_secret' => $secret,
+            'grant_type' => 'client_credentials'
+        ];
+
+        $result = $this->createApiPost('oauth/token', $data);
+        $isValid = is_array($result['body_array']) && array_key_exists('access_token', $result['body_array']);
+
+        if (!$isValid) {
+            throw new LocalizedException(__('No access token received'));
         }
+
+        return $result['body_array']['access_token'];
     }
 
-    public function prepareOrderData($order)
-    {
-        $data['email'] = $order->getCustomerEmail();
-        $customer_name = $order->getCustomerFirstName() . ' ' . $order->getCustomerLastName();
-        if (trim($customer_name) == '') {
-            $billing_address = $order->getBillingAddress();
-            $customer_name = $billing_address->getFirstname() . ' ' . $billing_address->getLastname();
-        }
-        $data['customer_name'] = $customer_name;
-        $data['order_id'] = $order->getIncrementId();
-        $data['platform'] = 'magento';
-        $data['currency_iso'] = $order->getOrderCurrency()->getCode();
-        $data['order_date'] = $order->getCreatedAt();
-        $data['products'] = $this->prepareProductsData($order);
-        return $data;
-    }
-
+    /**
+     * @param $path
+     * @param $data
+     * @param int $timeout
+     * @return array
+     */
     public function createApiPost($path, $data, $timeout = self::DEFAULT_TIMEOUT)
     {
-        try {
-            $cfg = array('timeout' => $timeout);
-            $http = $this->_curlFactory->create();
-            $feed_url = self::YOTPO_SECURED_API_URL . "/" . $path;
-            $http->setConfig($cfg);
-            $http->write(\Zend_Http_Client::POST, $feed_url, '1.1', array('Content-Type: application/json'), json_encode($data));
-            $resData = $http->read();
-            return array("code" => \Zend_Http_Response::extractCode($resData), "body" => json_decode(\Zend_Http_Response::extractBody($resData), true));
-        } catch (\Exception $e) {
-            $this->_logger->addDebug('error: ' . $e);
-        }
+        $url = self::YOTPO_SECURED_API_URL . '/' . $path;
+        $http = $this->curlFactory->create();
+        $http->setConfig(['timeout' => $timeout]);
+        $http->write(\Zend_Http_Client::POST, $url, '1.1', ['Content-Type: application/json'], $this->json->serialize($data));
+        $response = $http->read();
+
+        $result = [
+            'code' => \Zend_Http_Response::extractCode($response),
+            'body' => \Zend_Http_Response::extractBody($response),
+        ];
+
+        $result['body_array'] = $this->json->unserialize($result['body']);
+
+        return $result;
     }
 
-    public function createPurchases($order, $storeId)
+    /**
+     * @param $data
+     * @param $storeId
+     * @return array
+     * @throws LocalizedException
+     */
+    public function createPurchases($data, $storeId)
     {
-        $appKey = $this->_config->getAppKey($storeId);
-        return $this->createApiPost("apps/" . $appKey . "/purchases", $order);
-    }
-
-    public function massCreatePurchases($orders, $token, $storeId)
-    {
-        $appKey = $this->_config->getAppKey($storeId);
-        $data = array();
-        $data['utoken'] = $token;
+        $appKey = $this->config->getAppKey($storeId);
+        $data['utoken'] = $this->oauthAuthentication($storeId);
         $data['platform'] = 'magento';
-        $data['orders'] = $orders;
-        return $this->createApiPost("apps/" . $appKey . "/purchases/mass_create", $data);
+
+        return $this->createApiPost('apps/' . $appKey . '/purchases', $data);
+    }
+
+    /**
+     * @param $orders
+     * @param $storeId
+     * @return array
+     * @throws LocalizedException
+     */
+    public function massCreatePurchases($orders, $storeId)
+    {
+        $appKey = $this->config->getAppKey($storeId);
+
+        $data = [
+            'utoken' => $this->oauthAuthentication($storeId),
+            'platform' => 'magento',
+            'orders' => $orders,
+        ];
+
+        return $this->createApiPost('apps/' . $appKey . '/purchases/mass_create', $data);
     }
 
     public function createApiGet($path, $timeout = self::DEFAULT_TIMEOUT)
     {
-        try {
+        $url = self::YOTPO_UNSECURED_API_URL . '/' . $path;
+        $http = $this->curlFactory->create();
+        $http->setConfig(['timeout' => $timeout]);
+        $http->write(\Zend_Http_Client::GET, $url, '1.1',['Content-Type: application/json']);
+        $response = $http->read();
 
-            $cfg = array('timeout' => $timeout);
-            $http = $this->_curlFactory->create();
-            $feed_url = self::YOTPO_UNSECURED_API_URL . "/" . $path;
-            $http->setConfig($cfg);
-            $http->write(\Zend_Http_Client::GET, $feed_url, '1.1', array('Content-Type: application/json'));
-            $resData = $http->read();
-            return array("code" => \Zend_Http_Response::extractCode($resData), "body" => json_decode(\Zend_Http_Response::extractBody($resData)));
-        } catch (\Exception $e) {
-            $this->_logger->addDebug('error: ' . $e);
-        }
+        return [
+            'code' => \Zend_Http_Response::extractCode($response),
+            'body' => $this->json->unserialize(\Zend_Http_Response::extractBody($response))
+        ];
     }
 }

@@ -98,6 +98,6 @@ class Queue extends Command
             $this->queueRepository->save($queue);
         }
 
-        $output->writeln("<info>DONE</info>");
+        $output->writeln('<info>DONE</info>');
     }
 }

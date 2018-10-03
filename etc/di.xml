@@ -4,6 +4,7 @@
         <arguments>
             <argument name="commands" xsi:type="array">
                 <item name="yotpoQueue" xsi:type="object">Yotpo\Yotpo\Console\Command\Queue</item>
+                <item name="yotpoMassCreatePurchases" xsi:type="object">Yotpo\Yotpo\Console\Command\MassCreatePurchases</item>
             </argument>
         </arguments>
     </type>

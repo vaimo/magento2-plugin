@@ -43,12 +43,6 @@ public function __construct(
         $this->_messageManager->addError(__('Please make sure you insert your APP KEY and SECRET and save configuration before trying to export past orders'));
         return;
       }
-      $token = $this->_api->oauthAuthentication($storeId);
-      if ($token == null) 
-      {                
-        $this->_messageManager->addError(__("Please make sure the APP KEY and SECRET you've entered are correct"));
-        return;
-      }
       $offset = 0;
       $orderStatuses = $this->_config->getCustomOrderStatus($storeId);
       if ($orderStatuses == null) {
@@ -83,7 +77,7 @@ public function __construct(
             }
             if (count($orders) > 0) 
             {
-              $resData = $this->_api->massCreatePurchases($orders, $token, $storeId);
+              $resData = $this->_api->massCreatePurchases($orders, $storeId);
               $success = ($resData['code'] != 200) ? false : $success;
             }      
           } catch (\Exception $e) {

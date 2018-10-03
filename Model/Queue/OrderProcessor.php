@@ -66,7 +66,6 @@ class OrderProcessor
             'email' => $order->getCustomerEmail(),
             'customer_name' => $order->getCustomerName(),
             'order_id' => $order->getIncrementId(),
-            'platform' => 'magento',
             'currency_iso' => $order->getOrderCurrency()->getCode(),
             'order_date' => $order->getCreatedAt(),
             'products' => $this->getProductData($order),
@@ -124,6 +123,7 @@ class OrderProcessor
 
     /**
      * @param $id
+     * @return array
      * @throws LocalizedException
      */
     public function execute($id)
@@ -134,15 +134,11 @@ class OrderProcessor
         try {
             $this->emulation->startEnvironmentEmulation($storeId, Area::AREA_FRONTEND, true);
             $data = $this->getOrderData($order);
-            $data['utoken'] = $this->apiClient->oauthAuthentication($storeId);
-
-            if ($data['utoken'] == null) {
-                throw new LocalizedException(__('Access token received from Yotpo API is null'));
-            }
-
-            $this->apiClient->createPurchases($data, $storeId);
+            $result = $this->apiClient->createPurchases($data, $storeId);
         } finally {
             $this->emulation->stopEnvironmentEmulation();
         }
+
+        return $result;
     }
 }

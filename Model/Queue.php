@@ -46,14 +46,19 @@ class Queue extends AbstractModel implements QueueInterface
         try {
             switch ($this->getEntityType()) {
                 case 'order':
-                    $this->orderProcessor->execute($this->getEntityId());
+                    $result = $this->orderProcessor->execute($this->getEntityId());
                     break;
                 default:
                     throw new LocalizedException(__('Invalid entity type: %1', $this->getEntityType()));
             }
 
-            $this->setStatus(QueueInterface::STATUS_PROCESSED);
-            $this->setMessage('OK');
+            if ($result['code'] == 200) {
+                $this->setStatus(QueueInterface::STATUS_PROCESSED);
+                $this->setMessage($result['body']);
+            } else {
+                $this->setStatus(QueueInterface::STATUS_FAILED);
+                $this->setMessage($result['body']);
+            }
         } catch (\Exception $e) {
             $this->setStatus(QueueInterface::STATUS_FAILED);
             $this->setMessage($e->getMessage());
