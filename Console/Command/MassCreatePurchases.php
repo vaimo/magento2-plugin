@@ -19,6 +19,7 @@ use Yotpo\Yotpo\Model\Queue\OrderProcessor;
 use Magento\Store\Model\App\Emulation;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\App\Area;
+use Magento\Sales\Model\Order;
 
 class MassCreatePurchases extends Command
 {
@@ -108,6 +109,7 @@ class MassCreatePurchases extends Command
     {
         $collection = $this->collectionFactory->create();
         $collection->addFieldToFilter('store_id', $store->getId());
+        $collection->addFieldToFilter('state', Order::STATE_COMPLETE);
 
         if ($createdFrom = $input->getOption('from')) {
             $collection->addFieldToFilter('created_at', ['gteq' => $createdFrom]);
@@ -129,10 +131,15 @@ class MassCreatePurchases extends Command
                     }
 
                     $result = $this->apiClient->massCreatePurchases($orders, $store->getId());
-                    $output->write('.');
+
+                    if ($result['code'] != 200) {
+                        $output->writeln($result['body']);
+                    } else {
+                        $output->write('.');
+                    }
                 };
 
-                $output->writeln(' <info>[ OK ]</info>');
+                $output->writeln(' <info>[ DONE ]</info>');
             } finally {
                 $this->emulation->stopEnvironmentEmulation();
             }
@@ -158,6 +165,6 @@ class MassCreatePurchases extends Command
             }
         }
 
-        $output->writeln('<info>DONE</info>');
+        $output->writeln('<info>COMPLETE</info>');
     }
 }
