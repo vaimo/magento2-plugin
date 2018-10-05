@@ -127,10 +127,16 @@ class MassCreatePurchases extends Command
                     $collection->clear()->setPage($page, self::BATCH_SIZE);
 
                     foreach ($collection as $order) {
-                        $orders[] = $this->orderProcessor->getOrderData($order);
+                        $data = $this->orderProcessor->getOrderData($order);
+
+                        if (!empty($data['products'])) {
+                            $orders[] = $data;
+                        }
                     }
 
-                    $result = $this->apiClient->massCreatePurchases($orders, $store->getId());
+                    if ($orders) {
+                        $result = $this->apiClient->massCreatePurchases($orders, $store->getId());
+                    }
 
                     if ($result['code'] != 200) {
                         $output->writeln($result['body']);
@@ -140,6 +146,8 @@ class MassCreatePurchases extends Command
                 };
 
                 $output->writeln(' <info>[ DONE ]</info>');
+            } catch (\Exception $e) {
+                $output->writeln('<error>' . $e->getMessage() . '</error>');
             } finally {
                 $this->emulation->stopEnvironmentEmulation();
             }
