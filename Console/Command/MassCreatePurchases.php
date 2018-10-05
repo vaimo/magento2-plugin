@@ -136,18 +136,18 @@ class MassCreatePurchases extends Command
 
                     if ($orders) {
                         $result = $this->apiClient->massCreatePurchases($orders, $store->getId());
-                    }
 
-                    if ($result['code'] != 200) {
-                        $output->writeln($result['body']);
-                    } else {
-                        $output->write('.');
+                        if ($result['code'] != 200) {
+                            $output->writeln($result['body']);
+                        } else {
+                            $output->write('.');
+                        }
                     }
                 };
 
                 $output->writeln(' <info>[ DONE ]</info>');
             } catch (\Exception $e) {
-                $output->writeln('<error>' . $e->getMessage() . '</error>');
+                $output->writeln(' <error>' . $e->getMessage() . '</error>');
             } finally {
                 $this->emulation->stopEnvironmentEmulation();
             }
