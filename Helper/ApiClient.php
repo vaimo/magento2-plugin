@@ -88,7 +88,11 @@ class ApiClient
             'body' => \Zend_Http_Response::extractBody($response),
         ];
 
-        $result['body_array'] = $this->json->unserialize($result['body']);
+        try {
+            $result['body_array'] = $this->json->unserialize($result['body']);
+        } catch (\InvalidArgumentException $e) {
+            $result['body_array'] = [];
+        }
 
         return $result;
     }
@@ -135,9 +139,17 @@ class ApiClient
         $http->write(\Zend_Http_Client::GET, $url, '1.1',['Content-Type: application/json']);
         $response = $http->read();
 
-        return [
+        $result = [
             'code' => \Zend_Http_Response::extractCode($response),
-            'body' => $this->json->unserialize(\Zend_Http_Response::extractBody($response))
+            'body' => \Zend_Http_Response::extractBody($response),
         ];
+
+        try {
+            $result['body_array'] = $this->json->unserialize($result['body']);
+        } catch (\InvalidArgumentException $e) {
+            $result['body_array'] = [];
+        }
+
+        return $result;
     }
 }
