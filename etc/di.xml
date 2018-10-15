@@ -9,6 +9,13 @@
         </arguments>
     </type>
 
+    <type name="Yotpo\Yotpo\Console\Command\MassCreatePurchases">
+        <arguments>
+            <argument name="orderProcessor" xsi:type="object">Yotpo\Yotpo\Model\Queue\OrderProcessor\Proxy</argument>
+            <argument name="emulation" xsi:type="object">Magento\Store\Model\App\Emulation\Proxy</argument>
+        </arguments>
+    </type>
+
     <preference for="Magento\Catalog\Block\Product\ListProduct" type="Yotpo\Yotpo\Block\Rewrite\Product\YotpoListProduct" />
     <preference for="Magento\Review\Block\Product\ReviewRenderer" type="Yotpo\Yotpo\Block\Product\YotpoReviewRenderer" />
     <preference for="Yotpo\Yotpo\Api\Data\QueueInterface" type="Yotpo\Yotpo\Model\Queue"/>
