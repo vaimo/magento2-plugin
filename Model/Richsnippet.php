@@ -1,4 +1,5 @@
 <?php
+
 namespace Yotpo\Yotpo\Model;
 
 class Richsnippet extends \Magento\Framework\Model\AbstractModel
@@ -16,11 +17,15 @@ class Richsnippet extends \Magento\Framework\Model\AbstractModel
 
     public function getSnippetByProductIdAndStoreId($product_id, $store_id)
     {
-        $col = $this->getCollection()->addFieldToFilter('store_id', $store_id);
-        if ($col->getSize() == 0) {
+        $col = $this->getCollection()
+            ->addFieldToFilter('store_id', $store_id)
+            ->addFieldToFilter('product_id', $product_id)
+            ->setPageSize(1);
+        $snippet = $col->getFirstItem();
+
+        if (!$snippet->getId()) {
             return null;
         }
-        $snippet = $col->getItemByColumnValue('product_id', $product_id);
         return $snippet;
     }
 }
